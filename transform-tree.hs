@@ -6,13 +6,17 @@
 
 import Prelude hiding (sequence_, mapM)
 import Control.Arrow ((<<<), (&&&))
+import Data.List (inits, stripPrefix)
+import Data.Maybe (fromJust)
 import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
     unfoldTreeM, drawTree)
 import Data.Foldable (sequence_)
 import Data.Traversable (mapM)
 import System.Directory (doesFileExist, doesDirectoryExist,
     copyFile, getDirectoryContents, createDirectoryIfMissing)
-import System.FilePath (takeFileName, takeDirectory, (</>))
+import System.FilePath (takeFileName, takeDirectory, (</>),
+  splitDirectories, joinPath)
+import System.Posix.Files (createSymbolicLink)
 import System.Process (readProcess)
 
 main :: IO ()
@@ -131,3 +135,15 @@ renameDirTree r d = do
   let t = fsoTree d
   n <- mapM r t
   return $ d { fsoTree = n }
+
+createRelativeLink :: FilePath -> FilePath -> IO ()
+createRelativeLink orig link = createSymbolicLink rel link
+  where rel = relativePath link orig
+
+relativePath :: FilePath -> FilePath -> FilePath
+relativePath start end = joinPath $ map (const "..") up ++ down
+  where up     = init $ fromJust $ stripPrefix common s
+        down   = fromJust $ stripPrefix common e
+        common = last $ takeWhile (`elem` inits e) $ inits s
+        e      = splitDirectories end
+        s      = splitDirectories start
