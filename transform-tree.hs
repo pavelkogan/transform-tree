@@ -4,13 +4,16 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-import Prelude hiding (sequence_)
+import Prelude hiding (sequence_, mapM)
+import Control.Arrow ((<<<), (&&&))
 import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
     unfoldTreeM, drawTree)
 import Data.Foldable (sequence_)
+import Data.Traversable (mapM)
 import System.Directory (doesFileExist, doesDirectoryExist,
     copyFile, getDirectoryContents, createDirectoryIfMissing)
 import System.FilePath (takeFileName, takeDirectory, (</>))
+import System.Process (readProcess)
 
 main :: IO ()
 main = undefined
@@ -101,3 +104,16 @@ renameDir d n = d { dirname = n }
 renameFSO :: FSO -> FSOName -> FSO
 renameFSO = flip r where
   r n = either (Left . flip renameDir n) (Right . flip renameFile' n)
+
+readProcessString :: String -> String -> IO String
+readProcessString = uncurry readProcess <<< head &&& tail <<< words
+
+pipeRenameFSO :: String -> FSO -> IO FSO
+pipeRenameFSO p o =
+  return . renameFSO o =<< readProcessString p (name o)
+
+renameDirTree :: (FSO -> IO FSO) -> DirTree -> IO DirTree
+renameDirTree r d = do
+  let t = fsoTree d
+  n <- mapM r t
+  return $ d { fsoTree = n }
