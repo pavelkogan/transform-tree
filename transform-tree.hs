@@ -77,9 +77,19 @@ createDirTree dt = sequence_ $ unfoldTree nodeToIO (tree, destDir)
         emptyRoot x = x{rootLabel = Left Dir {dirname=""}}
 
 copyTreeContents :: FilePath -> FilePath -> IO ()
-copyTreeContents source dest = do
+copyTreeContents source dest =
+  transformTree source dest True (return . id)
+
+transformTree
+  :: FilePath
+  -> FilePath
+  -> Bool
+  -> (FSO -> IO FSO)
+  -> IO ()
+transformTree source dest co renamer = do
   sourceTree <- instantiateTreeFromFS source
-  let contentsTree = sourceTree { contentsOnly = True }
+  renamedTree <- renameDirTree renamer sourceTree
+  let contentsTree = renamedTree { contentsOnly = co }
       destTree = changeRoot contentsTree dest
   createDirTree destTree
 
