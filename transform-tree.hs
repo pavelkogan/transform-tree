@@ -78,19 +78,23 @@ createDirTree dt = sequence_ $ unfoldTree nodeToIO (tree, destDir)
 
 copyTreeContents :: FilePath -> FilePath -> IO ()
 copyTreeContents source dest =
-  transformTree source dest True (return . id)
+  transformTree source dest True (return . id) Nothing
 
 transformTree
   :: FilePath
   -> FilePath
   -> Bool
   -> (FSO -> IO FSO)
+  -> Maybe FileCreator
   -> IO ()
-transformTree source dest co renamer = do
+transformTree source dest co renamer creator = do
   sourceTree <- instantiateTreeFromFS source
   renamedTree <- renameDirTree renamer sourceTree
   let contentsTree = renamedTree { contentsOnly = co }
-      destTree = changeRoot contentsTree dest
+      createdTree = case creator of
+        Just c  -> changeDirTreeCreators contentsTree c
+        Nothing -> contentsTree
+      destTree = changeRoot createdTree dest
   createDirTree destTree
 
 changeRoot :: DirTree -> FilePath -> DirTree
