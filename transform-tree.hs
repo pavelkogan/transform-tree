@@ -112,23 +112,21 @@ replaceFileCreator :: File -> FileCreator -> File
 replaceFileCreator f@(File {content = (_, p)}) c
   = f {content = (c, p)}
 
-renameFile' :: File -> FSOName -> File
-renameFile' f n = f { filename = n }
+renameFile' :: FSOName -> File -> File
+renameFile' n f = f { filename = n }
 
-renameDir :: Dir -> FSOName -> Dir
-renameDir d n = d { dirname = n }
+renameDir :: FSOName -> Dir -> Dir
+renameDir n d = d { dirname = n }
 
---renameFSO f n = either (Left . renameDir f) (Right . renameFile' f) n
-renameFSO :: FSO -> FSOName -> FSO
-renameFSO = flip r where
-  r n = either (Left . flip renameDir n) (Right . flip renameFile' n)
+renameFSO :: FSOName -> FSO -> FSO
+renameFSO n = either (Left . renameDir n) (Right . renameFile' n)
 
 readProcessString :: String -> String -> IO String
 readProcessString = uncurry readProcess <<< head &&& tail <<< words
 
 pipeRenameFSO :: String -> FSO -> IO FSO
 pipeRenameFSO p o =
-  return . renameFSO o =<< readProcessString p (name o)
+  return . flip renameFSO o =<< readProcessString p (name o)
 
 renameDirTree :: (FSO -> IO FSO) -> DirTree -> IO DirTree
 renameDirTree r d = do
