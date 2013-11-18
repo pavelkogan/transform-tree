@@ -6,21 +6,85 @@
 
 import Prelude hiding (sequence_, mapM)
 import Control.Arrow ((<<<), (&&&))
+import Control.Monad (unless, msum)
 import Data.List (inits, stripPrefix)
 import Data.Maybe (fromJust)
 import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
     unfoldTreeM, drawTree)
 import Data.Foldable (sequence_)
 import Data.Traversable (mapM)
+import System.Console.GetOpt
 import System.Directory (doesFileExist, doesDirectoryExist,
-    copyFile, getDirectoryContents, createDirectoryIfMissing)
+  copyFile, getDirectoryContents, createDirectoryIfMissing,
+  getCurrentDirectory)
+import System.Environment (getArgs)
+import System.IO.Error (mkIOError, doesNotExistErrorType)
 import System.FilePath (takeFileName, takeDirectory, (</>),
-  splitDirectories, joinPath)
+  splitDirectories, joinPath, isValid)
 import System.Posix.Files (createSymbolicLink)
 import System.Process (readProcess)
 
+data Options = Options
+  { optVerbose  :: Bool
+  , optQuiet    :: Bool
+  , optRename   :: Maybe String
+  , optLink     :: Bool
+  , optSymbolic :: Bool
+  , optRelative :: Bool
+  } deriving (Show)
+
+defaultOptions :: Options
+defaultOptions = Options
+  { optVerbose  = False
+  , optQuiet    = False
+  , optRename   = Nothing
+  , optLink     = False
+  , optSymbolic = False
+  , optRelative = False
+  }
+
+options :: [OptDescr (Options -> Options)]
+options =
+  [ Option "v" ["verbose"] (NoArg $ \o -> o {optVerbose = True})
+      "verbose output"
+  , Option "q" ["quiet"] (NoArg $ \o -> o {optQuiet = True})
+      "quiet output"
+  , Option "r" ["rename"]
+      (ReqArg (\arg o -> o {optRename = Just arg}) "RENAMER")
+      "pipe to change filenames"
+  , Option "l" ["link"] (NoArg $ \o -> o {optLink = True})
+      "create hard links"
+  , Option "s" ["symlink"] (NoArg $ \o -> o {optSymbolic = True})
+      "create symbolic links"
+  , Option "" ["relative"] (NoArg $ \o -> o {optRelative = True})
+      "make symlinks relative"
+  ]
+
+parseOpt :: [String] -> (Options, [String], [String])
+parseOpt argv = (foldl1 (.) o defaultOptions, n, e)
+  where (o, n, e) = getOpt Permute options argv
+
+handleArgs :: [String] -> IO (FilePath, Maybe FilePath)
+handleArgs []        = error "missing file operand"
+handleArgs (_:_:_:_) = error "too many operands"
+handleArgs (source:rest) = do
+  let dest = msum $ map Just rest
+  isDir <- doesDirectoryExist source
+  unless isDir $ ioError $
+    mkIOError doesNotExistErrorType "" Nothing (Just source)
+  case fmap isValid dest of
+    Just False -> error $ fromJust dest ++ ": invalid filepath"
+    _          -> return ()
+  return (source, dest)
+
 main :: IO ()
-main = undefined
+main = do
+  args <- getArgs
+  let (opts, pos, errs) = parseOpt args
+  unless (null errs) $ error (head errs)
+  (source, d) <- handleArgs pos
+  dest <- maybe getCurrentDirectory return d
+  copyTreeContents source dest
 
 type FileCreator = FilePath -> FilePath -> IO ()
 type FSOName = String
