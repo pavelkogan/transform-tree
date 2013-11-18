@@ -160,20 +160,20 @@ transformTree source dest co renamer creator = do
   renamedTree <- renameDirTree renamer sourceTree
   let contentsTree = renamedTree { contentsOnly = co }
       createdTree = case creator of
-        Just c  -> changeDirTreeCreators contentsTree c
+        Just c  -> changeDirTreeCreators c contentsTree
         Nothing -> contentsTree
-      destTree = changeRoot createdTree dest
+      destTree = changeRoot dest createdTree
   createDirTree destTree
 
-changeRoot :: DirTree -> FilePath -> DirTree
-changeRoot t p = t { dirRoot = p }
+changeRoot :: FilePath -> DirTree -> DirTree
+changeRoot p t = t { dirRoot = p }
 
-changeDirTreeCreators :: DirTree -> FileCreator -> DirTree
-changeDirTreeCreators t c = t { fsoTree = new } where
-  new = (fmap . fmap) (`replaceFileCreator` c) (fsoTree t)
+changeDirTreeCreators :: FileCreator -> DirTree -> DirTree
+changeDirTreeCreators c t = t { fsoTree = new } where
+  new = (fmap . fmap) (replaceFileCreator c) (fsoTree t)
 
-replaceFileCreator :: File -> FileCreator -> File
-replaceFileCreator f@(File {content = (_, p)}) c
+replaceFileCreator :: FileCreator -> File -> File
+replaceFileCreator c f@(File {content = (_, p)})
   = f {content = (c, p)}
 
 renameFile' :: FSOName -> File -> File
