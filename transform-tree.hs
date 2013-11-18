@@ -16,11 +16,11 @@ import Data.Traversable (mapM)
 import System.Console.GetOpt
 import System.Directory (doesFileExist, doesDirectoryExist,
   copyFile, getDirectoryContents, createDirectoryIfMissing,
-  getCurrentDirectory)
+  getCurrentDirectory, canonicalizePath)
 import System.Environment (getArgs)
 import System.IO.Error (mkIOError, doesNotExistErrorType)
-import System.FilePath (takeFileName, takeDirectory, (</>),
-  splitDirectories, joinPath, isValid, hasTrailingPathSeparator)
+import System.FilePath (takeFileName, takeDirectory, (</>), joinPath,
+  splitDirectories, isValid, hasTrailingPathSeparator, splitFileName)
 import System.Posix.Files (createSymbolicLink, createLink)
 import System.Process (readProcess)
 
@@ -199,8 +199,13 @@ renameDirTree r d = do
   return $ d { fsoTree = n }
 
 createRelativeLink :: FilePath -> FilePath -> IO ()
-createRelativeLink orig link = createSymbolicLink rel link
-  where rel = relativePath link orig
+createRelativeLink orig link = do
+  orig' <- canonicalizePath orig
+  let (dir, file) = splitFileName link
+  dir' <- canonicalizePath dir
+  let link' = dir' </> file
+      rel = relativePath link' orig'
+  createSymbolicLink rel link
 
 relativePath :: FilePath -> FilePath -> FilePath
 relativePath start end = joinPath $ map (const "..") up ++ down
