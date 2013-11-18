@@ -6,7 +6,7 @@
 
 import Prelude hiding (sequence_, mapM)
 import Control.Arrow ((<<<), (&&&))
-import Control.Monad (unless, msum)
+import Control.Monad (unless, msum, ap)
 import Data.List (inits, stripPrefix)
 import Data.Maybe (fromJust)
 import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
@@ -20,8 +20,8 @@ import System.Directory (doesFileExist, doesDirectoryExist,
 import System.Environment (getArgs)
 import System.IO.Error (mkIOError, doesNotExistErrorType)
 import System.FilePath (takeFileName, takeDirectory, (</>),
-  splitDirectories, joinPath, isValid)
-import System.Posix.Files (createSymbolicLink)
+  splitDirectories, joinPath, isValid, hasTrailingPathSeparator)
+import System.Posix.Files (createSymbolicLink, createLink)
 import System.Process (readProcess)
 
 data Options = Options
@@ -84,7 +84,28 @@ main = do
   unless (null errs) $ error (head errs)
   (source, d) <- handleArgs pos
   dest <- maybe getCurrentDirectory return d
-  copyTreeContents source dest
+  transform source dest opts
+
+transform :: FilePath -> FilePath -> Options -> IO ()
+transform source dest opt = createDirTree
+  =<< case optRename opt of
+        Nothing -> return
+        Just r  -> renameDirTree (pipeRenameFSO r)
+  =<< return . changeRoot dest
+             . case chooseFileCreator opt of
+                 Nothing -> id
+                 Just c  -> changeDirTreeCreators c
+             . (if hasTrailingPathSeparator source
+                 then (\t -> t {contentsOnly = True}) else id)
+  =<< instantiateTreeFromFS source
+
+chooseFileCreator :: Options -> Maybe FileCreator
+chooseFileCreator o =
+  case ap [optLink, optRelative, optSymbolic] [o] of
+    (True:_)     -> Just createLink
+    (_:True:_)   -> Just createRelativeLink
+    (_:_:True:_) -> Just createSymbolicLink
+    _            -> Nothing
 
 type FileCreator = FilePath -> FilePath -> IO ()
 type FSOName = String
@@ -143,27 +164,6 @@ createDirTree dt = sequence_ $ unfoldTree nodeToIO (tree, destDir)
         tree = if contentsOnly dt then emptyRoot t else t
         t = fsoTree dt
         emptyRoot x = x{rootLabel = Left Dir {dirname=""}}
-
-copyTreeContents :: FilePath -> FilePath -> IO ()
-copyTreeContents source dest =
-  transformTree source dest True (return . id) Nothing
-
-transformTree
-  :: FilePath
-  -> FilePath
-  -> Bool
-  -> (FSO -> IO FSO)
-  -> Maybe FileCreator
-  -> IO ()
-transformTree source dest co renamer creator = do
-  sourceTree <- instantiateTreeFromFS source
-  renamedTree <- renameDirTree renamer sourceTree
-  let contentsTree = renamedTree { contentsOnly = co }
-      createdTree = case creator of
-        Just c  -> changeDirTreeCreators c contentsTree
-        Nothing -> contentsTree
-      destTree = changeRoot dest createdTree
-  createDirTree destTree
 
 changeRoot :: FilePath -> DirTree -> DirTree
 changeRoot p t = t { dirRoot = p }
