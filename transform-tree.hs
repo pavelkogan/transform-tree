@@ -61,7 +61,7 @@ options =
   ]
 
 parseOpt :: [String] -> (Options, [String], [String])
-parseOpt argv = (foldl1 (.) o defaultOptions, n, e)
+parseOpt argv = (foldl (.) id o defaultOptions, n, e)
   where (o, n, e) = getOpt Permute options argv
 
 handleArgs :: [String] -> IO (FilePath, Maybe FilePath)
