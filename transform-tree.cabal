@@ -1,0 +1,29 @@
+name:                transform-tree
+version:             0.1
+synopsis:            replicate directory tree, transforming contents
+description:
+    transform-tree allows replicating a directory tree, while
+    applying various transformations to its contents.
+    Files can copied or linked to the originals, and both files and
+    directories can be renamed.
+homepage:            https://github.com/pavelkogan/transform-tree
+license:             MIT
+license-file:        LICENSE
+author:              Pavel Kogan
+maintainer:          pkogan@gmail.com
+copyright:           2013 Pavel Kogan
+category:            Utility
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+source-repository head
+    type:      git
+    location:  https://github.com/pavelkogan/transform-tree
+
+executable transform-tree
+  main-is:             transform-tree.hs
+  ghc-options:         -Wall
+  build-depends:       base >=4.6 && <4.7, process, unix, filepath,
+                       directory, containers
+  default-language:    Haskell2010
