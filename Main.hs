@@ -1,4 +1,4 @@
-#!/usr/bin/env runhaskell
+module Main where
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 

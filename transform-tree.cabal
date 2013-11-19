@@ -22,7 +22,7 @@ source-repository head
     location:  https://github.com/pavelkogan/transform-tree
 
 executable transform-tree
-  main-is:             transform-tree.hs
+  main-is:             Main.hs
   ghc-options:         -Wall
   build-depends:       base >=4.6 && <4.7, process, unix, filepath,
                        directory, containers
