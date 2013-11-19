@@ -1,8 +1,6 @@
 #!/usr/bin/env runhaskell
 
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 
 import Prelude hiding (sequence_, mapM)
 import Control.Arrow ((<<<), (&&&))
