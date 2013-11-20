@@ -28,10 +28,10 @@ handleArgs (source:rest) = do
 chooseFileCreator :: Options -> Maybe FileCreator
 chooseFileCreator o =
   case ap [optLink, optRelative, optSymbolic] [o] of
-    (True:_)     -> Just createLink
-    (_:True:_)   -> Just createRelativeLink
-    (_:_:True:_) -> Just createSymbolicLink
-    _            -> Nothing
+    (True:_)        -> Just createLink
+    (_:True:True:_) -> Just createRelativeLink
+    (_:_:True:_)    -> Just createSymbolicLink
+    _               -> Nothing
 
 createRelativeLink :: FilePath -> FilePath -> IO ()
 createRelativeLink orig link = do
