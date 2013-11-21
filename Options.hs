@@ -7,7 +7,7 @@ import Data.Maybe (isJust)
 
 class Switch a where
   on, off :: a -> Bool
-  on  = not . off; off = not . on
+  on = not . off; off = not . on
 
 instance Switch Bool       where on = id
 instance Switch (Maybe a)  where on = isJust
@@ -77,4 +77,4 @@ parseOpt argv = assert defaultsOK $ (o', n, e')
 
 collision :: Options -> Bool
 collision o = or $ map g mutuallyExclusive
-  where g = (>1) . length . filter id . map (\f -> on $ f o)
+  where g = (>1) . length . filter id . map ($ o)

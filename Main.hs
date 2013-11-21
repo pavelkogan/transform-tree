@@ -24,13 +24,9 @@ main = do
 
 transform :: FilePath -> FilePath -> Options -> IO ()
 transform source dest opt = createDirTree
-  =<< case optRename opt of
-        Nothing -> return
-        Just r  -> renameDirTree (pipeRenameFSO r)
+  =<< maybe return (renameDirTree . pipeRenameFSO) (optRename opt)
   =<< return . changeRoot dest
-             . case chooseFileCreator opt of
-                 Nothing -> id
-                 Just c  -> changeDirTreeCreators c
+             . maybe id changeDirTreeCreators (chooseFileCreator opt)
              . maybe id filterFiles (optFilter opt)
              . (if hasTrailingPathSeparator source
                  then (\t -> t {contentsOnly = True}) else id)
