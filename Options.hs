@@ -21,6 +21,7 @@ data Options = Options
   , optRelative :: Bool
   , optConvert  :: Maybe String
   , optFilter   :: Maybe String
+  , optPrune    :: Bool
   } deriving (Show)
 
 defaultOptions :: Options
@@ -33,6 +34,7 @@ defaultOptions = Options
   , optRelative = False
   , optConvert  = Nothing
   , optFilter   = Nothing
+  , optPrune    = False
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -50,13 +52,15 @@ options =
       "create symbolic links"
   , Option "" ["relative"] (NoArg $ \o -> o {optRelative = True})
       "make symlinks relative"
-  , Option "c" ["convert"]
+  , Option "cC" ["convert"]
       (ReqArg (\arg o -> o {optConvert = Just arg}) "CONVERTER")
       "command for converting files\n\
       \optionally specify '{in}' and '{out}'"
-  , Option "" ["filter"]
+  , Option "F" ["filter"]
       (ReqArg (\arg o -> o {optFilter = Just arg}) "FILTER")
       "regular expression used to filter files"
+  , Option "p" ["prune"] (NoArg $ \o -> o {optPrune = True})
+      "remove empty directories"
   ]
 
 mutuallyExclusive :: [[Options -> Bool]]

@@ -2,7 +2,7 @@ module Utils (handleArgs, chooseFileCreator, filterFiles) where
 
 import Options (Options(..), on)
 import FSO (FileCreator, filename)
-import DirTree (DirTree(..), filterDirTree)
+import DirTree (DirTree(..), filterDirTreeByFSO)
 
 import Control.Arrow ((<<<))
 import Control.Exception (catch)
@@ -98,5 +98,5 @@ substitute :: [(Regex, String)] -> String -> String
 substitute = flip $ foldl (\i (p, r) -> subRegex p i r)
 
 filterFiles :: String -> DirTree -> DirTree
-filterFiles = filterDirTree . f
+filterFiles = filterDirTreeByFSO . f
   where f s = either (const True) (match (mkRegex s) . filename)

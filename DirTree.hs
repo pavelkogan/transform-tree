@@ -1,17 +1,17 @@
 module DirTree
   ( DirTree(..), createDirTree, renameDirTree, changeRoot
   , changeDirTreeCreators, instantiateTreeFromFS, stringifyDirTree
-  , filterDirTree
+  , filterDirTreeByFSO, pruneDirs
   ) where
 
 import FSO (FSO, File(..), Dir(..), FileCreator,
-  name, createFile, replaceFileCreator)
+  name, createFile, replaceFileCreator, isDir)
 
 import Prelude hiding (sequence_, mapM)
 import Data.Maybe (mapMaybe)
 import Data.Foldable (sequence_)
 import Data.Traversable (mapM)
-import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
+import Data.Tree (Tree(..), rootLabel, subForest, unfoldTree,
   unfoldTreeM, drawTree)
 import System.Directory (doesFileExist, doesDirectoryExist,
   copyFile, getDirectoryContents, createDirectoryIfMissing)
@@ -26,12 +26,12 @@ stringifyDirTree = drawTree . fmap name . fsoTree
 
 buildNodeFromPath :: FilePath -> IO (FSO, [FilePath])
 buildNodeFromPath path = do
-  isFile <- doesFileExist path
-  isDir  <- doesDirectoryExist path
-  if isFile then return $ flip (,) [] $
+  fileExists <- doesFileExist path
+  dirExists  <- doesDirectoryExist path
+  if fileExists then return $ flip (,) [] $
     Right File {filename = takeFileName path,
                 content  = (copyFile, path) }
-  else if isDir then do
+  else if dirExists then do
     contents <- getDirectoryContents path
     let notImplicit x = (x /= ".") && (x /= "..")
         paths = map (path </>) $ filter notImplicit contents
@@ -78,7 +78,15 @@ filterTree p t = if p t
   then Just $ t {subForest = mapMaybe (filterTree p) (subForest t)}
   else Nothing
 
-filterDirTree :: (FSO -> Bool) -> DirTree -> DirTree
-filterDirTree p d = case filterTree (p . rootLabel) (fsoTree d) of
-  Nothing -> d {fsoTree = (fsoTree d){subForest = []}}
+filterDirTree :: (Tree FSO -> Bool) -> DirTree -> DirTree
+filterDirTree p d = case filterTree p (fsoTree d) of
+  Nothing -> d {fsoTree = Node (Left $ Dir "") []}
   Just t  -> d {fsoTree = t}
+
+filterDirTreeByFSO :: (FSO -> Bool) -> DirTree -> DirTree
+filterDirTreeByFSO p = filterDirTree (p . rootLabel)
+
+pruneDirs :: DirTree -> DirTree
+pruneDirs = filterDirTree (not . nullFSOTree)
+  where nullFSOTree t = and $
+          isDir (rootLabel t) : (map nullFSOTree $ subForest t)

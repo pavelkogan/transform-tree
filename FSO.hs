@@ -1,6 +1,7 @@
 module FSO
   ( File(..), Dir(..), FSO, FileCreator, FSOName
   , name, createFile, replaceFileCreator, pipeRenameFSO
+  , isDir, isFile
   ) where
 
 import Control.Arrow ((<<<), (&&&))
@@ -17,6 +18,10 @@ type FSO = Either Dir File
 
 name :: FSO -> FSOName
 name = either dirname filename
+
+isDir, isFile :: FSO -> Bool
+isDir  = either (const True) (const False)
+isFile = either (const False) (const True)
 
 createFile :: File -> FilePath -> IO ()
 createFile file dir = creator file $ dir </> filename file
