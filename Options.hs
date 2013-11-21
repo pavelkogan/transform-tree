@@ -1,4 +1,4 @@
-module Options (Options(..), parseOpt) where
+module Options (Options(..), parseOpt, on) where
 
 import System.Console.GetOpt
 import Control.Applicative ((<$>), (<*>))
@@ -19,6 +19,7 @@ data Options = Options
   , optLink     :: Bool
   , optSymbolic :: Bool
   , optRelative :: Bool
+  , optConvert  :: Maybe String
   } deriving (Show)
 
 defaultOptions :: Options
@@ -29,6 +30,7 @@ defaultOptions = Options
   , optLink     = False
   , optSymbolic = False
   , optRelative = False
+  , optConvert  = Nothing
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -46,10 +48,14 @@ options =
       "create symbolic links"
   , Option "" ["relative"] (NoArg $ \o -> o {optRelative = True})
       "make symlinks relative"
+  , Option "c" ["convert"]
+      (ReqArg (\arg o -> o {optConvert = Just arg}) "CONVERTER")
+      "command for converting files\n\
+      \optionally specify '{in}' and '{out}'"
   ]
 
 mutuallyExclusive :: [[Options -> Bool]]
-mutuallyExclusive = [ [optLink, optSymbolic]
+mutuallyExclusive = [ [optLink, optSymbolic, on.optConvert]
                     , [optVerbose, optQuiet] ]
 
 defaultsOK :: Bool
