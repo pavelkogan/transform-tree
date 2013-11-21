@@ -1,7 +1,8 @@
-module Utils (handleArgs, chooseFileCreator) where
+module Utils (handleArgs, chooseFileCreator, filterFiles) where
 
 import Options (Options(..), on)
-import FSO (FileCreator)
+import FSO (FileCreator, filename)
+import DirTree (DirTree(..), filterDirTree)
 
 import Control.Arrow ((<<<))
 import Control.Exception (catch)
@@ -95,3 +96,7 @@ match = curry $ isJust . uncurry matchRegex
 
 substitute :: [(Regex, String)] -> String -> String
 substitute = flip $ foldl (\i (p, r) -> subRegex p i r)
+
+filterFiles :: String -> DirTree -> DirTree
+filterFiles = filterDirTree . f
+  where f s = either (const True) (match (mkRegex s) . filename)

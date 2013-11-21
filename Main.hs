@@ -6,7 +6,7 @@ import Options (Options(..), parseOpt)
 import FSO (pipeRenameFSO)
 import DirTree (DirTree(contentsOnly), createDirTree, renameDirTree,
   changeRoot, changeDirTreeCreators, instantiateTreeFromFS)
-import Utils (handleArgs, chooseFileCreator)
+import Utils (handleArgs, chooseFileCreator, filterFiles)
 
 import Control.Monad (unless)
 import System.Directory (getCurrentDirectory)
@@ -31,6 +31,7 @@ transform source dest opt = createDirTree
              . case chooseFileCreator opt of
                  Nothing -> id
                  Just c  -> changeDirTreeCreators c
+             . maybe id filterFiles (optFilter opt)
              . (if hasTrailingPathSeparator source
                  then (\t -> t {contentsOnly = True}) else id)
   =<< instantiateTreeFromFS source

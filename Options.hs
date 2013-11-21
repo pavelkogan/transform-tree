@@ -20,6 +20,7 @@ data Options = Options
   , optSymbolic :: Bool
   , optRelative :: Bool
   , optConvert  :: Maybe String
+  , optFilter   :: Maybe String
   } deriving (Show)
 
 defaultOptions :: Options
@@ -31,6 +32,7 @@ defaultOptions = Options
   , optSymbolic = False
   , optRelative = False
   , optConvert  = Nothing
+  , optFilter   = Nothing
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -52,6 +54,9 @@ options =
       (ReqArg (\arg o -> o {optConvert = Just arg}) "CONVERTER")
       "command for converting files\n\
       \optionally specify '{in}' and '{out}'"
+  , Option "" ["filter"]
+      (ReqArg (\arg o -> o {optFilter = Just arg}) "FILTER")
+      "regular expression used to filter files"
   ]
 
 mutuallyExclusive :: [[Options -> Bool]]

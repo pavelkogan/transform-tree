@@ -1,12 +1,14 @@
 module DirTree
   ( DirTree(..), createDirTree, renameDirTree, changeRoot
   , changeDirTreeCreators, instantiateTreeFromFS, stringifyDirTree
+  , filterDirTree
   ) where
 
 import FSO (FSO, File(..), Dir(..), FileCreator,
   name, createFile, replaceFileCreator)
 
 import Prelude hiding (sequence_, mapM)
+import Data.Maybe (mapMaybe)
 import Data.Foldable (sequence_)
 import Data.Traversable (mapM)
 import Data.Tree (Tree, rootLabel, subForest, unfoldTree,
@@ -70,3 +72,13 @@ renameDirTree r d = do
   let t = fsoTree d
   n <- mapM r t
   return $ d { fsoTree = n }
+
+filterTree :: (Tree a -> Bool) -> Tree a -> Maybe (Tree a)
+filterTree p t = if p t
+  then Just $ t {subForest = mapMaybe (filterTree p) (subForest t)}
+  else Nothing
+
+filterDirTree :: (FSO -> Bool) -> DirTree -> DirTree
+filterDirTree p d = case filterTree (p . rootLabel) (fsoTree d) of
+  Nothing -> d {fsoTree = (fsoTree d){subForest = []}}
+  Just t  -> d {fsoTree = t}
