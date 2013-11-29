@@ -40,9 +40,14 @@ renameDir n d = d { dirname = n }
 renameFSO :: FSOName -> FSO -> FSO
 renameFSO n = either (Left . renameDir n) (Right . renameFile' n)
 
+{- |Takes a string containing an external command, and an FSO. The
+   FSO's name is piped through the command, the output of which
+   becomes the new FSO name. -}
 pipeRenameFSO :: String -> FSO -> IO FSO
 pipeRenameFSO p o =
   return . flip renameFSO o =<< readProcessString p (name o)
 
-readProcessString :: String -> String -> IO String
+readProcessString :: String    -- ^command to be run
+                  -> String    -- ^standard input
+                  -> IO String -- ^standard output
 readProcessString = uncurry readProcess <<< head &&& tail <<< words

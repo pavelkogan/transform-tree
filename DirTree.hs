@@ -17,13 +17,16 @@ import System.Directory (doesFileExist, doesDirectoryExist,
   copyFile, getDirectoryContents, createDirectoryIfMissing)
 import System.FilePath (takeFileName, takeDirectory, (</>))
 
-data DirTree = DirTree { dirRoot      :: FilePath
-                       , contentsOnly :: Bool
-                       , fsoTree      :: Tree FSO }
+data DirTree = DirTree
+  { dirRoot      :: FilePath
+  , contentsOnly :: Bool
+-- ^Set to True if root of 'fsoTree' is to be ignored.
+  , fsoTree      :: Tree FSO }
 
 stringifyDirTree :: DirTree -> String
 stringifyDirTree = drawTree . fmap name . fsoTree
 
+-- |Helper function for 'instantiateTreeFromFS'.
 buildNodeFromPath :: FilePath -> IO (FSO, [FilePath])
 buildNodeFromPath path = do
   fileExists <- doesFileExist path
@@ -44,6 +47,7 @@ instantiateTreeFromFS path = do
   return DirTree { dirRoot = takeDirectory path,
                    fsoTree = tree, contentsOnly = False }
 
+-- |Helper function for 'createDirTree'.
 nodeToIO :: (Tree FSO, FilePath) -> (IO (), [(Tree FSO, FilePath)])
 nodeToIO (tree, parentDir) = (action, seeds)
   where action   = either makeDir makeFile fso
@@ -53,6 +57,7 @@ nodeToIO (tree, parentDir) = (action, seeds)
         makeDir  = const $ createDirectoryIfMissing True fsoPath
         makeFile = flip createFile parentDir
 
+-- |Write out DirTree to filesystem.
 createDirTree :: DirTree -> IO ()
 createDirTree dt = sequence_ $ unfoldTree nodeToIO (tree, destDir)
   where destDir = dirRoot dt
@@ -73,6 +78,8 @@ renameDirTree r d = do
   n <- mapM r t
   return $ d { fsoTree = n }
 
+-- |Applies predicate to successive subtrees when predicate is True
+-- for their parent.
 filterTree :: (Tree a -> Bool) -> Tree a -> Maybe (Tree a)
 filterTree p t = if p t
   then Just $ t {subForest = mapMaybe (filterTree p) (subForest t)}
@@ -86,6 +93,7 @@ filterDirTree p d = case filterTree p (fsoTree d) of
 filterDirTreeByFSO :: (FSO -> Bool) -> DirTree -> DirTree
 filterDirTreeByFSO p = filterDirTree (p . rootLabel)
 
+-- |Remove empty directories from DirTree.
 pruneDirs :: DirTree -> DirTree
 pruneDirs = filterDirTree (not . nullFSOTree)
   where nullFSOTree t = and $

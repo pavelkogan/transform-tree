@@ -67,10 +67,13 @@ mutuallyExclusive :: [[Options -> Bool]]
 mutuallyExclusive = [ [optLink, optSymbolic, on.optConvert]
                     , [optVerbose, optQuiet] ]
 
+-- |True if all mutually exclusive options default to "off".
 defaultsOK :: Bool
 defaultsOK = and $
   (off .) <$> (concat mutuallyExclusive) <*> [defaultOptions]
 
+-- |Parses list of command-line options into an Options data
+-- structure, a list of non-options and a list of errors.
 parseOpt :: [String] -> (Options, [String], [String])
 parseOpt argv = assert defaultsOK $ (o', n, e')
   where
@@ -79,6 +82,8 @@ parseOpt argv = assert defaultsOK $ (o', n, e')
     e' = if not (collision o') then e
            else "mutually exclusive options\n":e
 
+-- |Tests if more than one option has been used from any of the
+-- lists of mutually exclusive options.
 collision :: Options -> Bool
 collision o = or $ map g mutuallyExclusive
   where g = (>1) . length . filter id . map ($ o)

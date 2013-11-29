@@ -22,6 +22,9 @@ import System.Process (CreateProcess(..), StdStream(..), shell,
   createProcess, waitForProcess)
 import Text.Regex (Regex, mkRegex, subRegex, matchRegex)
 
+{- |Parses command-line arguments minus command-line options.
+   Expects paths of either one or two directories, the first of
+   which must exist. Throws errors when conditions not met.-}
 handleArgs :: [String] -> IO (FilePath, Maybe FilePath)
 handleArgs []        = error "missing file operand"
 handleArgs (_:_:_:_) = error "too many operands"
@@ -53,7 +56,9 @@ createRelativeLink orig link = do
       rel = relativePath link' orig'
   createSymbolicLink rel link
 
-relativePath :: FilePath -> FilePath -> FilePath
+relativePath :: FilePath -- ^start point
+             -> FilePath -- ^end point
+             -> FilePath -- ^path from \"start\" to \"end\"
 relativePath start end = joinPath $ map (const "..") up ++ down
   where up     = init $ fromJust $ stripPrefix common s
         down   = fromJust $ stripPrefix common e
@@ -61,6 +66,11 @@ relativePath start end = joinPath $ map (const "..") up ++ down
         e      = splitDirectories end
         s      = splitDirectories start
 
+{- |Takes a string containing an external command with optional {in}
+   and {out} file markers. If these are present, source and
+   destination filepaths are substituted into the command.
+   Otherwise, the file contents are piped in and/or out,
+   respectively, when the command is run. -}
 convertFile :: String -> FilePath -> FilePath -> IO ()
 convertFile converter source dest = do
   tempDir <- getTemporaryDirectory
@@ -86,6 +96,7 @@ moveFile s d = catch (renameFile s d) $ \e ->
     then copyFile s d >> removeFile s
     else ioError e
 
+-- |Helper function for 'moveFile'.
 isUnsupportedOperation :: IOException -> Bool
 isUnsupportedOperation e = case ioe_type e of
   UnsupportedOperation -> True
@@ -97,6 +108,7 @@ match = curry $ isJust . uncurry matchRegex
 substitute :: [(Regex, String)] -> String -> String
 substitute = flip $ foldl (\i (p, r) -> subRegex p i r)
 
-filterFiles :: String -> DirTree -> DirTree
+filterFiles :: String -- ^regex
+            -> DirTree -> DirTree
 filterFiles = filterDirTreeByFSO . f
   where f s = either (const True) (match (mkRegex s) . filename)
