@@ -22,6 +22,8 @@ data Options = Options
   , optConvert  :: Maybe String
   , optFilter   :: Maybe String
   , optPrune    :: Bool
+  , optForce    :: Bool
+  , optDryRun   :: Bool
   } deriving (Show)
 
 defaultOptions :: Options
@@ -35,6 +37,8 @@ defaultOptions = Options
   , optConvert  = Nothing
   , optFilter   = Nothing
   , optPrune    = False
+  , optForce    = False
+  , optDryRun   = False
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -61,6 +65,10 @@ options =
       "regular expression used to filter files"
   , Option "p" ["prune"] (NoArg $ \o -> o {optPrune = True})
       "remove empty directories"
+  , Option "f" ["force"] (NoArg $ \o -> o {optForce = True})
+      "overwrite existing files"
+  , Option "n" ["dry-run"] (NoArg $ \o -> o {optDryRun = True})
+      "perform a trial run with no changes made"
   ]
 
 mutuallyExclusive :: [[Options -> Bool]]

@@ -6,7 +6,8 @@ import Options (Options(..), parseOpt)
 import FSO (pipeRenameFSO)
 import DirTree (DirTree(contentsOnly), createDirTree, renameDirTree,
   changeRoot, changeDirTreeCreators, instantiateTreeFromFS, pruneDirs)
-import Utils (handleArgs, chooseFileCreator, filterFiles)
+import Utils (handleArgs, chooseFileCreator, filterFiles,
+  createOptions)
 
 import Control.Monad (unless)
 import System.Directory (getCurrentDirectory)
@@ -23,7 +24,7 @@ main = do
   transform source dest opts
 
 transform :: FilePath -> FilePath -> Options -> IO ()
-transform source dest opt = createDirTree
+transform source dest opt = createDirTree (createOptions opt)
   =<< maybe return (renameDirTree . pipeRenameFSO) (optRename opt)
   =<< return . changeRoot dest
              . maybe id changeDirTreeCreators (chooseFileCreator opt)

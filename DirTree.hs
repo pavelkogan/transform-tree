@@ -4,8 +4,8 @@ module DirTree
   , filterDirTreeByFSO, pruneDirs
   ) where
 
-import FSO (FSO, File(..), Dir(..), FileCreator,
-  name, createFile, replaceFileCreator, isDir)
+import FSO (FSO, File(..), Dir(..), FileCreator, CreateOptions,
+  name, createFile, createDir, replaceFileCreator, isDir)
 
 import Prelude hiding (sequence_, mapM)
 import Data.Maybe (mapMaybe)
@@ -14,7 +14,7 @@ import Data.Traversable (mapM)
 import Data.Tree (Tree(..), rootLabel, subForest, unfoldTree,
   unfoldTreeM, drawTree)
 import System.Directory (doesFileExist, doesDirectoryExist,
-  copyFile, getDirectoryContents, createDirectoryIfMissing)
+  copyFile, getDirectoryContents)
 import System.FilePath (takeFileName, takeDirectory, (</>))
 
 data DirTree = DirTree
@@ -33,7 +33,7 @@ buildNodeFromPath path = do
   dirExists  <- doesDirectoryExist path
   if fileExists then return $ flip (,) [] $
     Right File {filename = takeFileName path,
-                content  = (copyFile, path) }
+                content  = (("->", copyFile), path) }
   else if dirExists then do
     contents <- getDirectoryContents path
     let notImplicit x = (x /= ".") && (x /= "..")
@@ -48,18 +48,20 @@ instantiateTreeFromFS path = do
                    fsoTree = tree, contentsOnly = False }
 
 -- |Helper function for 'createDirTree'.
-nodeToIO :: (Tree FSO, FilePath) -> (IO (), [(Tree FSO, FilePath)])
-nodeToIO (tree, parentDir) = (action, seeds)
+nodeToIO :: (Tree FSO, FilePath, CreateOptions)
+         -> (IO (), [(Tree FSO, FilePath, CreateOptions)])
+nodeToIO (tree, parentDir, opts) = (action, seeds)
   where action   = either makeDir makeFile fso
-        seeds    = map (flip (,) fsoPath) $ subForest tree
+        seeds    = map (\t -> (t, fsoPath, opts)) $ subForest tree
         fso      = rootLabel tree
         fsoPath  = (parentDir </>) $ name fso
-        makeDir  = const $ createDirectoryIfMissing True fsoPath
-        makeFile = flip createFile parentDir
+        makeDir  = createDir opts parentDir
+        makeFile = createFile opts parentDir
 
 -- |Write out DirTree to filesystem.
-createDirTree :: DirTree -> IO ()
-createDirTree dt = sequence_ $ unfoldTree nodeToIO (tree, destDir)
+createDirTree :: CreateOptions -> DirTree -> IO ()
+createDirTree opts dt = sequence_ $
+    unfoldTree nodeToIO (tree, destDir, opts)
   where destDir = dirRoot dt
         tree = if contentsOnly dt then emptyRoot t else t
         t = fsoTree dt

@@ -1,7 +1,9 @@
-module Utils (handleArgs, chooseFileCreator, filterFiles) where
+module Utils
+  ( handleArgs, chooseFileCreator, filterFiles, createOptions
+  ) where
 
 import Options (Options(..), on)
-import FSO (FileCreator, filename)
+import FSO (FileCreator, CreateOptions, filename)
 import DirTree (DirTree(..), filterDirTreeByFSO)
 
 import Control.Arrow ((<<<))
@@ -41,11 +43,14 @@ handleArgs (source:rest) = do
 chooseFileCreator :: Options -> Maybe FileCreator
 chooseFileCreator o =
   case ap [optLink, optRelative, optSymbolic, on.optConvert] [o] of
-    (True:_)        -> Just createLink
-    (_:True:True:_) -> Just createRelativeLink
-    (_:_:True:_)    -> Just createSymbolicLink
-    (_:_:_:True:_)  -> fmap convertFile $ optConvert o
+    (True:_)        -> Just ("=>", createLink)
+    (_:True:True:_) -> Just ("<-", createRelativeLink)
+    (_:_:True:_)    -> Just ("<-", createSymbolicLink)
+    (_:_:_:True:_)  -> fmap (((,) "~>") . convertFile) $ optConvert o
     _               -> Nothing
+
+createOptions :: Options -> CreateOptions
+createOptions o = (optForce o, optVerbose o, optDryRun o)
 
 createRelativeLink :: FilePath -> FilePath -> IO ()
 createRelativeLink orig link = do

@@ -1,20 +1,25 @@
 module FSO
-  ( File(..), Dir(..), FSO, FileCreator, FSOName
-  , name, createFile, replaceFileCreator, pipeRenameFSO
+  ( File(..), Dir(..), FSO, FileCreator, FSOName, CreateOptions
+  , name, createFile, createDir, replaceFileCreator, pipeRenameFSO
   , isDir, isFile
   ) where
 
-import Control.Arrow ((<<<), (&&&))
+import Control.Arrow ((<<<), (&&&), first)
+import System.Directory (doesFileExist, removeFile,
+  createDirectoryIfMissing)
 import System.FilePath ((</>))
 import System.Process (readProcess)
 
-type FileCreator = FilePath -> FilePath -> IO ()
+type FileCreator = (String, FilePath -> FilePath -> IO ())
 type FSOName = String
 
 data Dir  = Dir  { dirname  :: FSOName } deriving (Show)
 data File = File { filename :: FSOName
                  , content  :: (FileCreator, FilePath) }
 type FSO = Either Dir File
+
+-- |force, verbose, dry run
+type CreateOptions = (Bool, Bool, Bool)
 
 name :: FSO -> FSOName
 name = either dirname filename
@@ -23,9 +28,30 @@ isDir, isFile :: FSO -> Bool
 isDir  = either (const True) (const False)
 isFile = either (const False) (const True)
 
-createFile :: File -> FilePath -> IO ()
-createFile file dir = creator file $ dir </> filename file
-  where creator = uncurry ($) . content
+createFile :: CreateOptions -> FilePath -> File -> IO ()
+createFile (force, verbose, dryRun) dir file = do
+  let creator = uncurry ($) . first snd . content
+      path = dir </> filename file
+      createAction = creator file path
+      (sep, origin) = first fst $ content file
+  exists <- doesFileExist path
+  if not dryRun then
+    if not exists then createAction
+    else
+      if force then removeFile path >> createAction
+      else return ()
+  else return ()
+  if verbose && (force || not exists)
+    then putStrLn $ unwords [origin, sep, path]
+    else return ()
+
+createDir :: CreateOptions -> FilePath -> Dir -> IO ()
+createDir (_, verbose, dryRun) parent dir = do
+  let path = parent </> dirname dir
+  if not dryRun then
+    createDirectoryIfMissing True path
+  else return ()
+  if verbose then putStrLn path else return ()
 
 replaceFileCreator :: FileCreator -> File -> File
 replaceFileCreator c f@(File {content = (_, p)})
