@@ -5,6 +5,7 @@ module FSO
   ) where
 
 import Control.Arrow ((<<<), (&&&), first)
+import Data.Ord (comparing)
 import System.Directory (doesFileExist, removeFile,
   createDirectoryIfMissing)
 import System.FilePath ((</>))
@@ -16,6 +17,20 @@ type FSOName = String
 data FSO = Dir  { dirname  :: FSOName }
          | File { filename :: FSOName
                 , content  :: (FileCreator, FilePath) }
+
+instance Show FSO where
+  show (Dir n) = "Dir " ++ show n
+  show (File n _) = "File " ++ show n
+
+instance Eq FSO where
+  Dir n1 == Dir n2 = n1 == n2
+  File n1 (_, p1) == File n2 (_, p2) = n1 == n2 && p1 == p2
+  _ == _ = False
+
+instance Ord FSO where
+  compare (File _ _) (Dir _) = LT
+  compare (Dir _) (File _ _) = GT
+  compare o1 o2 = comparing name o1 o2
 
 -- |force, verbose, dry run
 type CreateOptions = (Bool, Bool, Bool)

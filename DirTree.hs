@@ -1,14 +1,16 @@
 module DirTree
   ( DirTree(..), createDirTree, renameDirTree, changeRoot
   , changeDirTreeCreators, instantiateTreeFromFS, stringifyDirTree
-  , filterDirTreeByFSO, pruneDirs
+  , filterDirTreeByFSO, pruneDirs, sortDirTree
   ) where
 
 import FSO (FSO(..), FileCreator, CreateOptions,
   name, createFSO, replaceFileCreator, isDir)
 
 import Prelude hiding (sequence_, mapM)
+import Data.List (sortBy)
 import Data.Maybe (mapMaybe)
+import Data.Ord (comparing)
 import Data.Foldable (sequence_)
 import Data.Traversable (mapM)
 import Data.Tree (Tree(..), rootLabel, subForest, unfoldTree,
@@ -21,7 +23,8 @@ data DirTree = DirTree
   { dirRoot      :: FilePath
   , contentsOnly :: Bool
 -- ^Set to True if root of 'fsoTree' is to be ignored.
-  , fsoTree      :: Tree FSO }
+  , fsoTree      :: Tree FSO
+  } deriving (Show, Eq)
 
 stringifyDirTree :: DirTree -> String
 stringifyDirTree = drawTree . fmap name . fsoTree
@@ -98,3 +101,9 @@ pruneDirs :: DirTree -> DirTree
 pruneDirs = filterDirTree (not . nullFSOTree)
   where nullFSOTree t = and $
           isDir (rootLabel t) : (map nullFSOTree $ subForest t)
+
+sortDirTree :: DirTree -> DirTree
+sortDirTree d = d {fsoTree = sortTree $ fsoTree d}
+  where
+    sortTree t = t {subForest = sort' $ map sortTree $ subForest t}
+    sort' = sortBy $ comparing rootLabel

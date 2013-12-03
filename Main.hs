@@ -5,7 +5,8 @@ module Main where
 import Options (Options(..), parseOpt)
 import FSO (pipeRenameFSO)
 import DirTree (DirTree(contentsOnly), createDirTree, renameDirTree,
-  changeRoot, changeDirTreeCreators, instantiateTreeFromFS, pruneDirs)
+  changeRoot, changeDirTreeCreators, instantiateTreeFromFS, pruneDirs,
+  sortDirTree)
 import Utils (handleArgs, chooseFileCreator, filterFiles,
   createOptions)
 
@@ -26,7 +27,7 @@ main = do
 transform :: FilePath -> FilePath -> Options -> IO ()
 transform source dest opt = createDirTree (createOptions opt)
   =<< maybe return (renameDirTree . pipeRenameFSO) (optRename opt)
-  =<< return . changeRoot dest
+  =<< return . changeRoot dest . sortDirTree
              . maybe id changeDirTreeCreators (chooseFileCreator opt)
              . (if optPrune opt then pruneDirs else id)
              . maybe id filterFiles (optFilter opt)
