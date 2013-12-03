@@ -1,6 +1,6 @@
 module FSO
-  ( File(..), Dir(..), FSO, FileCreator, FSOName, CreateOptions
-  , name, createFile, createDir, replaceFileCreator, pipeRenameFSO
+  ( FSO(..), FileCreator, FSOName, CreateOptions
+  , name, createFSO, replaceFileCreator, pipeRenameFSO
   , isDir, isFile
   ) where
 
@@ -13,23 +13,23 @@ import System.Process (readProcess)
 type FileCreator = (String, FilePath -> FilePath -> IO ())
 type FSOName = String
 
-data Dir  = Dir  { dirname  :: FSOName } deriving (Show)
-data File = File { filename :: FSOName
-                 , content  :: (FileCreator, FilePath) }
-type FSO = Either Dir File
+data FSO = Dir  { dirname  :: FSOName }
+         | File { filename :: FSOName
+                , content  :: (FileCreator, FilePath) }
 
 -- |force, verbose, dry run
 type CreateOptions = (Bool, Bool, Bool)
 
 name :: FSO -> FSOName
-name = either dirname filename
+name (Dir n)    = n
+name (File n _) = n
 
 isDir, isFile :: FSO -> Bool
-isDir  = either (const True) (const False)
-isFile = either (const False) (const True)
+isDir (Dir _) = True; isDir (File _ _) = False
+isFile (Dir _) = False; isFile (File _ _) = True
 
-createFile :: CreateOptions -> FilePath -> File -> IO ()
-createFile (force, verbose, dryRun) dir file = do
+createFSO :: CreateOptions -> FilePath -> FSO -> IO ()
+createFSO (force, verbose, dryRun) dir file@(File _ _) = do
   let creator = uncurry ($) . first snd . content
       path = dir </> filename file
       createAction = creator file path
@@ -45,26 +45,21 @@ createFile (force, verbose, dryRun) dir file = do
     then putStrLn $ unwords [origin, sep, path]
     else return ()
 
-createDir :: CreateOptions -> FilePath -> Dir -> IO ()
-createDir (_, verbose, dryRun) parent dir = do
+createFSO (_, verbose, dryRun) parent dir@(Dir _) = do
   let path = parent </> dirname dir
   if not dryRun then
     createDirectoryIfMissing True path
   else return ()
   if verbose then putStrLn path else return ()
 
-replaceFileCreator :: FileCreator -> File -> File
+replaceFileCreator :: FileCreator -> FSO -> FSO
 replaceFileCreator c f@(File {content = (_, p)})
   = f {content = (c, p)}
-
-renameFile' :: FSOName -> File -> File
-renameFile' n f = f { filename = n }
-
-renameDir :: FSOName -> Dir -> Dir
-renameDir n d = d { dirname = n }
+replaceFileCreator _ d = d
 
 renameFSO :: FSOName -> FSO -> FSO
-renameFSO n = either (Left . renameDir n) (Right . renameFile' n)
+renameFSO n d@(Dir _)    = d { dirname = n }
+renameFSO n f@(File _ _) = f { filename = n }
 
 {- |Takes a string containing an external command, and an FSO. The
    FSO's name is piped through the command, the output of which

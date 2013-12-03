@@ -4,8 +4,8 @@ module DirTree
   , filterDirTreeByFSO, pruneDirs
   ) where
 
-import FSO (FSO, File(..), Dir(..), FileCreator, CreateOptions,
-  name, createFile, createDir, replaceFileCreator, isDir)
+import FSO (FSO(..), FileCreator, CreateOptions,
+  name, createFSO, replaceFileCreator, isDir)
 
 import Prelude hiding (sequence_, mapM)
 import Data.Maybe (mapMaybe)
@@ -32,13 +32,13 @@ buildNodeFromPath path = do
   fileExists <- doesFileExist path
   dirExists  <- doesDirectoryExist path
   if fileExists then return $ flip (,) [] $
-    Right File {filename = takeFileName path,
-                content  = (("->", copyFile), path) }
+    File {filename = takeFileName path,
+          content  = (("->", copyFile), path) }
   else if dirExists then do
     contents <- getDirectoryContents path
     let notImplicit x = (x /= ".") && (x /= "..")
         paths = map (path </>) $ filter notImplicit contents
-    return (Left Dir {dirname = takeFileName path}, paths)
+    return (Dir {dirname = takeFileName path}, paths)
   else return undefined -- throw error
 
 instantiateTreeFromFS :: FilePath -> IO DirTree
@@ -51,12 +51,10 @@ instantiateTreeFromFS path = do
 nodeToIO :: (Tree FSO, FilePath, CreateOptions)
          -> (IO (), [(Tree FSO, FilePath, CreateOptions)])
 nodeToIO (tree, parentDir, opts) = (action, seeds)
-  where action   = either makeDir makeFile fso
+  where action   = createFSO opts parentDir fso
         seeds    = map (\t -> (t, fsoPath, opts)) $ subForest tree
         fso      = rootLabel tree
         fsoPath  = (parentDir </>) $ name fso
-        makeDir  = createDir opts parentDir
-        makeFile = createFile opts parentDir
 
 -- |Write out DirTree to filesystem.
 createDirTree :: CreateOptions -> DirTree -> IO ()
@@ -65,14 +63,14 @@ createDirTree opts dt = sequence_ $
   where destDir = dirRoot dt
         tree = if contentsOnly dt then emptyRoot t else t
         t = fsoTree dt
-        emptyRoot x = x{rootLabel = Left Dir {dirname=""}}
+        emptyRoot x = x{rootLabel = Dir ""}
 
 changeRoot :: FilePath -> DirTree -> DirTree
 changeRoot p t = t { dirRoot = p }
 
 changeDirTreeCreators :: FileCreator -> DirTree -> DirTree
 changeDirTreeCreators c t = t { fsoTree = new } where
-  new = (fmap . fmap) (replaceFileCreator c) (fsoTree t)
+  new = fmap (replaceFileCreator c) (fsoTree t)
 
 renameDirTree :: (FSO -> IO FSO) -> DirTree -> IO DirTree
 renameDirTree r d = do
@@ -89,7 +87,7 @@ filterTree p t = if p t
 
 filterDirTree :: (Tree FSO -> Bool) -> DirTree -> DirTree
 filterDirTree p d = case filterTree p (fsoTree d) of
-  Nothing -> d {fsoTree = Node (Left $ Dir "") []}
+  Nothing -> d {fsoTree = Node (Dir "") []}
   Just t  -> d {fsoTree = t}
 
 filterDirTreeByFSO :: (FSO -> Bool) -> DirTree -> DirTree
