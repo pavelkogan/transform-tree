@@ -60,12 +60,11 @@ createFSO (force, verbose, dryRun) dir file@(File _ _) = do
     then putStrLn $ unwords [origin, sep, path]
     else return ()
 
-createFSO (_, verbose, dryRun) parent dir@(Dir _) = do
+createFSO (_, _, dryRun) parent dir@(Dir _) = do
   let path = parent </> dirname dir
   if not dryRun then
     createDirectoryIfMissing True path
   else return ()
-  if verbose then putStrLn path else return ()
 
 replaceFileCreator :: FileCreator -> FSO -> FSO
 replaceFileCreator c f@(File {content = (_, p)})
