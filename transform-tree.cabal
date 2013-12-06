@@ -1,5 +1,5 @@
 name:                transform-tree
-version:             0.1
+version:             0.2
 synopsis:            replicate directory tree, transforming contents
 description:
     transform-tree allows for replicating a directory tree, while
