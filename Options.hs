@@ -1,4 +1,4 @@
-module Options (Options(..), parseOpt, on) where
+module Options (Options(..), parseOpt, on, usageText) where
 
 import System.Console.GetOpt
 import Control.Applicative ((<$>), (<*>))
@@ -24,6 +24,7 @@ data Options = Options
   , optPrune    :: Bool
   , optForce    :: Bool
   , optDryRun   :: Bool
+  , optHelp     :: Bool
   } deriving (Show)
 
 defaultOptions :: Options
@@ -39,6 +40,7 @@ defaultOptions = Options
   , optPrune    = False
   , optForce    = False
   , optDryRun   = False
+  , optHelp     = False
   }
 
 options :: [OptDescr (Options -> Options)]
@@ -69,7 +71,13 @@ options =
       "overwrite existing files"
   , Option "n" ["dry-run"] (NoArg $ \o -> o {optDryRun = True})
       "perform a trial run with no changes made"
+  , Option "h" ["help"] (NoArg $ \o -> o {optHelp = True})
+      "show usage text and exit"
   ]
+
+usageText :: String
+usageText = flip usageInfo options
+  "Usage: transform-tree [OPTION]... SOURCE [DEST]\n"
 
 mutuallyExclusive :: [[Options -> Bool]]
 mutuallyExclusive = [ [optLink, optSymbolic, on.optConvert]
