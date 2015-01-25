@@ -24,7 +24,7 @@ source-repository head
 executable transform-tree
   main-is:             Main.hs
   ghc-options:         -Wall
-  build-depends:       base >=4.6 && <4.7,
+  build-depends:       base >=4.6 && <4.8,
                        process,
                        unix,
                        filepath,
