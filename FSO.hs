@@ -53,6 +53,7 @@ createFSO (force, verbose, dryRun) dir file@(File _ _) = do
   unless dryRun $
     if | not exists -> createAction
        | force      -> removeFile path >> createAction
+       | otherwise  -> return ()
   when (verbose && (force || not exists)) $
     putStrLn $ unwords [origin, sep, path]
 

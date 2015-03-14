@@ -69,7 +69,7 @@ parseOpt argv = (o', n, e')
   where
     o' = fromJust $ getParseResult $ parseOpts argv
     e = []
-    n = []
+    n = optSource o' : maybeToList (optDest o')
     e' = if not (collision o') then e
            else "mutually exclusive options\n":e
 
