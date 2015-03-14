@@ -1,7 +1,7 @@
-module Options (Options(..), parseOpt, on', usageText) where
+module Options (Options(..), parseOpt, on', parseOpts) where
 
 import BasePrelude
-import System.Console.GetOpt
+import Options.Applicative
 
 class Switch a where
   on', off :: a -> Bool
@@ -22,82 +22,59 @@ data Options = Options
   , optPrune    :: Bool
   , optForce    :: Bool
   , optDryRun   :: Bool
-  , optHelp     :: Bool
+  , optSource   :: String
+  , optDest     :: Maybe String
   } deriving (Show)
 
-defaultOptions :: Options
-defaultOptions = Options
-  { optVerbose  = False
-  , optQuiet    = False
-  , optRename   = Nothing
-  , optLink     = False
-  , optSymbolic = False
-  , optRelative = False
-  , optConvert  = Nothing
-  , optFilter   = Nothing
-  , optPrune    = False
-  , optForce    = False
-  , optDryRun   = False
-  , optHelp     = False
-  }
-
-options :: [OptDescr (Options -> Options)]
-options =
-  [ Option "v" ["verbose"] (NoArg $ \o -> o {optVerbose = True})
-      "verbose output"
-  , Option "q" ["quiet"] (NoArg $ \o -> o {optQuiet = True})
-      "quiet output"
-  , Option "r" ["rename"]
-      (ReqArg (\arg o -> o {optRename = Just arg}) "RENAMER")
-      "pipe to change filenames"
-  , Option "l" ["link"] (NoArg $ \o -> o {optLink = True})
-      "create hard links"
-  , Option "s" ["symlink"] (NoArg $ \o -> o {optSymbolic = True})
-      "create symbolic links"
-  , Option "" ["relative"] (NoArg $ \o -> o {optRelative = True})
-      "make symlinks relative"
-  , Option "cC" ["convert"]
-      (ReqArg (\arg o -> o {optConvert = Just arg}) "CONVERTER")
-      "command for converting files\n\
-      \optionally specify '{in}' and '{out}'"
-  , Option "F" ["filter"]
-      (ReqArg (\arg o -> o {optFilter = Just arg}) "FILTER")
-      "regular expression used to filter files"
-  , Option "p" ["prune"] (NoArg $ \o -> o {optPrune = True})
-      "remove empty directories"
-  , Option "f" ["force"] (NoArg $ \o -> o {optForce = True})
-      "overwrite existing files"
-  , Option "n" ["dry-run"] (NoArg $ \o -> o {optDryRun = True})
-      "perform a trial run with no changes made"
-  , Option "h" ["help"] (NoArg $ \o -> o {optHelp = True})
-      "show usage text and exit"
-  ]
-
-usageText :: String
-usageText = flip usageInfo options $
-  "Usage: transform-tree [OPTION]... SOURCE [DEST]\n"
+options :: Parser Options
+options = Options
+  <$> switch (long "verbose" <> short 'v' <> help "verbose output")
+  <*> switch (long "quiet" <> short 'q' <> help "quiet output")
+  <*> optional (strOption $ help "pipe to change filenames"
+      <> long "rename" <> short 'r' <> metavar "RENAMER")
+  <*> switch (long "link" <> short 'l' <> help "create hard links")
+  <*> switch (long "symlink" <> short 's'
+      <> help "create symbolic links")
+  <*> switch (long "relative" <> help "make symlinks relative")
+  <*> optional (strOption $ help "command for converting files; \
+         \optionally specify '{in}' and '{out}'"
+      <> long "convert" <> short 'c' <> metavar "CONVERTER")
+  <*> optional (strOption $ help
+         "regular expression used to filter files"
+      <> long "filter" <> short 'F' <> metavar "FILTER")
+  <*> switch (long "prune" <> short 'p'
+      <> help "remove empty directories")
+  <*> switch (long "force" <> short 'f'
+      <> help "overwrite existing files")
+  <*> switch (long "dry-run" <> short 'n'
+      <> help "perform a trial run with no changes made")
+  <*> argument str (metavar "SOURCE")
+  <*> optional (argument str (metavar "DEST"))
 
 mutuallyExclusive :: [[Options -> Bool]]
 mutuallyExclusive = [ [optLink, optSymbolic, on'.optConvert]
                     , [optVerbose, optQuiet] ]
 
--- |True if all mutually exclusive options default to "off".
-defaultsOK :: Bool
-defaultsOK = and $
-  (off .) <$> (concat mutuallyExclusive) <*> [defaultOptions]
+parseOpts :: [String] -> ParserResult Options
+parseOpts argv = parseResult
+  where
+    parseResult = execParserPure (prefs mempty) parserInfo argv
+    parserInfo = info (helper <*> options) $ fullDesc <> header
+      "Usage: transform-tree [OPTION]... SOURCE [DEST]\n"
 
 -- |Parses list of command-line options into an Options data
 -- structure, a list of non-options and a list of errors.
 parseOpt :: [String] -> (Options, [String], [String])
-parseOpt argv = assert defaultsOK $ (o', n, e')
+parseOpt argv = (o', n, e')
   where
-    (o, n, e) = getOpt Permute options argv
-    o' = foldl (.) id o defaultOptions
+    o' = fromJust $ getParseResult $ parseOpts argv
+    e = []
+    n = []
     e' = if not (collision o') then e
            else "mutually exclusive options\n":e
 
 -- |Tests if more than one option has been used from any of the
 -- lists of mutually exclusive options.
 collision :: Options -> Bool
-collision o = or $ map g mutuallyExclusive
+collision o = any g mutuallyExclusive
   where g = (>1) . length . filter id . map ($ o)

@@ -29,6 +29,7 @@ executable transform-tree
                      , containers
                      , directory
                      , filepath
+                     , optparse-applicative
                      , process
                      , regex-compat
                      , unix

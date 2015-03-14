@@ -4,18 +4,19 @@ import DirTree (DirTree (contentsOnly), changeDirTreeCreators, changeRoot,
                 createDirTree, instantiateTreeFromFS, pruneDirs, renameDirTree,
                 sortDirTree)
 import FSO     (pipeRenameFSO)
-import Options (Options (..), parseOpt, usageText)
+import Options (Options (..), parseOpt, parseOpts)
 import Utils   (chooseFileCreator, createOptions, filterFiles, handleArgs)
 
 import BasePrelude
-import System.Directory (getCurrentDirectory)
-import System.FilePath  (hasTrailingPathSeparator)
+import Options.Applicative (handleParseResult)
+import System.Directory    (getCurrentDirectory)
+import System.FilePath     (hasTrailingPathSeparator)
 
 main :: IO ()
 main = do
   args <- getArgs
+  _ <- handleParseResult $ parseOpts args
   let (opts, pos, errs) = parseOpt args
-  when (optHelp opts) $ putStrLn usageText >> exitSuccess
   unless (null errs) $ error (head errs)
   (source, d) <- handleArgs pos
   dest <- maybe getCurrentDirectory return d
