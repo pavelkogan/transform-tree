@@ -4,20 +4,15 @@ module DirTree
   , filterDirTreeByFSO, pruneDirs, sortDirTree
   ) where
 
-import FSO (FSO(..), FileCreator, CreateOptions,
-  name, createFSO, replaceFileCreator, isDir)
+import FSO (CreateOptions, FSO (..), FileCreator, createFSO, isDir, name,
+            replaceFileCreator)
 
-import Prelude hiding (sequence_, mapM)
-import Data.List (sortBy)
-import Data.Maybe (mapMaybe)
-import Data.Ord (comparing)
-import Data.Foldable (sequence_)
-import Data.Traversable (mapM)
-import Data.Tree (Tree(..), rootLabel, subForest, unfoldTree,
-  unfoldTreeM, drawTree)
-import System.Directory (doesFileExist, doesDirectoryExist,
-  copyFile, getDirectoryContents)
-import System.FilePath (takeFileName, takeDirectory, (</>))
+import BasePrelude
+import Data.Tree        (Tree (..), drawTree, rootLabel, subForest, unfoldTree,
+                         unfoldTreeM)
+import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
+                         getDirectoryContents)
+import System.FilePath  (takeDirectory, takeFileName, (</>))
 
 data DirTree = DirTree
   { dirRoot      :: FilePath
@@ -34,7 +29,7 @@ buildNodeFromPath :: FilePath -> IO (FSO, [FilePath])
 buildNodeFromPath path = do
   fileExists <- doesFileExist path
   dirExists  <- doesDirectoryExist path
-  if fileExists then return $ flip (,) [] $
+  if fileExists then return $ (,[])
     File {filename = takeFileName path,
           content  = (("->", copyFile), path) }
   else if dirExists then do
@@ -100,7 +95,7 @@ filterDirTreeByFSO p = filterDirTree (p . rootLabel)
 pruneDirs :: DirTree -> DirTree
 pruneDirs = filterDirTree (not . nullFSOTree)
   where nullFSOTree t = and $
-          isDir (rootLabel t) : (map nullFSOTree $ subForest t)
+          isDir (rootLabel t) : map nullFSOTree (subForest t)
 
 sortDirTree :: DirTree -> DirTree
 sortDirTree d = d {fsoTree = sortTree $ fsoTree d}

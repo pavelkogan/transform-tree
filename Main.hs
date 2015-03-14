@@ -1,28 +1,21 @@
 module Main where
 
-{-# OPTIONS_GHC -fno-warn-unused-binds #-}
+import DirTree (DirTree (contentsOnly), changeDirTreeCreators, changeRoot,
+                createDirTree, instantiateTreeFromFS, pruneDirs, renameDirTree,
+                sortDirTree)
+import FSO     (pipeRenameFSO)
+import Options (Options (..), parseOpt, usageText)
+import Utils   (chooseFileCreator, createOptions, filterFiles, handleArgs)
 
-import Options (Options(..), parseOpt, usageText)
-import FSO (pipeRenameFSO)
-import DirTree (DirTree(contentsOnly), createDirTree, renameDirTree,
-  changeRoot, changeDirTreeCreators, instantiateTreeFromFS, pruneDirs,
-  sortDirTree)
-import Utils (handleArgs, chooseFileCreator, filterFiles,
-  createOptions)
-
-import Control.Monad (unless)
+import BasePrelude
 import System.Directory (getCurrentDirectory)
-import System.Environment (getArgs)
-import System.Exit (exitSuccess)
-import System.FilePath (hasTrailingPathSeparator)
+import System.FilePath  (hasTrailingPathSeparator)
 
 main :: IO ()
 main = do
   args <- getArgs
   let (opts, pos, errs) = parseOpt args
-  if optHelp opts
-    then putStrLn usageText >> exitSuccess
-    else return ()
+  when (optHelp opts) $ putStrLn usageText >> exitSuccess
   unless (null errs) $ error (head errs)
   (source, d) <- handleArgs pos
   dest <- maybe getCurrentDirectory return d

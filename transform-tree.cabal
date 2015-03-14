@@ -24,11 +24,14 @@ source-repository head
 executable transform-tree
   main-is:             Main.hs
   ghc-options:         -Wall
-  build-depends:       base >=4.6 && <4.8,
-                       process,
-                       unix,
-                       filepath,
-                       directory,
-                       containers,
-                       regex-compat
+  build-depends:       base >=4.6 && <4.8
+                     , base-prelude
+                     , containers
+                     , directory
+                     , filepath
+                     , process
+                     , regex-compat
+                     , unix
   default-language:    Haskell2010
+  default-extensions:  NoImplicitPrelude
+                       TupleSections

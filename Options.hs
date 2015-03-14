@@ -1,16 +1,14 @@
-module Options (Options(..), parseOpt, on, usageText) where
+module Options (Options(..), parseOpt, on', usageText) where
 
+import BasePrelude
 import System.Console.GetOpt
-import Control.Applicative ((<$>), (<*>))
-import Control.Exception (assert)
-import Data.Maybe (isJust)
 
 class Switch a where
-  on, off :: a -> Bool
-  on = not . off; off = not . on
+  on', off :: a -> Bool
+  on' = not . off; off = not . on'
 
-instance Switch Bool       where on = id
-instance Switch (Maybe a)  where on = isJust
+instance Switch Bool       where on' = id
+instance Switch (Maybe a)  where on' = isJust
 
 data Options = Options
   { optVerbose  :: Bool
@@ -76,11 +74,11 @@ options =
   ]
 
 usageText :: String
-usageText = flip usageInfo options
+usageText = flip usageInfo options $
   "Usage: transform-tree [OPTION]... SOURCE [DEST]\n"
 
 mutuallyExclusive :: [[Options -> Bool]]
-mutuallyExclusive = [ [optLink, optSymbolic, on.optConvert]
+mutuallyExclusive = [ [optLink, optSymbolic, on'.optConvert]
                     , [optVerbose, optQuiet] ]
 
 -- |True if all mutually exclusive options default to "off".

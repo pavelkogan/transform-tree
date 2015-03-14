@@ -1,20 +1,20 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module FSO
   ( FSO(..), FileCreator, FSOName, CreateOptions
   , name, createFSO, replaceFileCreator, pipeRenameFSO
   , isDir, isFile
   ) where
 
-import Control.Arrow ((<<<), (&&&), first)
-import Data.Ord (comparing)
-import System.Directory (doesFileExist, removeFile,
-  createDirectoryIfMissing)
-import System.FilePath ((</>))
-import System.Process (readProcess)
+import BasePrelude
+import System.Directory (createDirectoryIfMissing, doesFileExist, removeFile)
+import System.FilePath  ((</>))
+import System.Process   (readProcess)
 
 type FileCreator = (String, FilePath -> FilePath -> IO ())
 type FSOName = String
 
-data FSO = Dir  { dirname  :: FSOName }
+data FSO = Dir  { dirname :: FSOName }
          | File { filename :: FSOName
                 , content  :: (FileCreator, FilePath) }
 
@@ -50,21 +50,15 @@ createFSO (force, verbose, dryRun) dir file@(File _ _) = do
       createAction = creator file path
       (sep, origin) = first fst $ content file
   exists <- doesFileExist path
-  if not dryRun then
-    if not exists then createAction
-    else
-      if force then removeFile path >> createAction
-      else return ()
-  else return ()
-  if verbose && (force || not exists)
-    then putStrLn $ unwords [origin, sep, path]
-    else return ()
+  unless dryRun $
+    if | not exists -> createAction
+       | force      -> removeFile path >> createAction
+  when (verbose && (force || not exists)) $
+    putStrLn $ unwords [origin, sep, path]
 
 createFSO (_, _, dryRun) parent dir@(Dir _) = do
   let path = parent </> dirname dir
-  if not dryRun then
-    createDirectoryIfMissing True path
-  else return ()
+  unless dryRun $ createDirectoryIfMissing True path
 
 replaceFileCreator :: FileCreator -> FSO -> FSO
 replaceFileCreator c f@(File {content = (_, p)})

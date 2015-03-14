@@ -2,27 +2,21 @@ module Utils
   ( handleArgs, chooseFileCreator, filterFiles, createOptions
   ) where
 
-import Options (Options(..), on)
-import FSO (FSO(..), FileCreator, CreateOptions)
-import DirTree (DirTree(..), filterDirTreeByFSO)
+import DirTree (DirTree (..), filterDirTreeByFSO)
+import FSO     (CreateOptions, FSO (..), FileCreator)
+import Options (Options (..), on')
 
-import Control.Arrow ((<<<))
-import Control.Exception (catch)
-import Control.Monad (unless, msum, ap)
-import Data.List (inits, stripPrefix)
-import Data.Maybe (fromJust, isJust)
-import GHC.IO.Exception
-import System.Directory (doesDirectoryExist, canonicalizePath,
-  getTemporaryDirectory,  copyFile, removeFile, renameFile)
-import System.FilePath ((</>), joinPath,
-  splitDirectories, isValid, splitFileName)
-import System.IO (IOMode(..), openBinaryTempFile, hClose,
-  openBinaryFile)
-import System.IO.Error (mkIOError, doesNotExistErrorType)
-import System.Posix.Files (createSymbolicLink, createLink)
-import System.Process (CreateProcess(..), StdStream(..), shell,
-  createProcess, waitForProcess)
-import Text.Regex (Regex, mkRegex, subRegex, matchRegex)
+import BasePrelude
+import System.Directory   (canonicalizePath, copyFile, doesDirectoryExist,
+                           getTemporaryDirectory, removeFile, renameFile)
+import System.FilePath    (isValid, joinPath, splitDirectories, splitFileName,
+                           (</>))
+import System.IO          (IOMode (..), openBinaryFile,
+                           openBinaryTempFile)
+import System.Posix.Files (createLink, createSymbolicLink)
+import System.Process     (CreateProcess (..), StdStream (..), createProcess,
+                           shell, waitForProcess)
+import Text.Regex         (Regex, matchRegex, mkRegex, subRegex)
 
 {- |Parses command-line arguments minus command-line options.
    Expects paths of either one or two directories, the first of
@@ -42,11 +36,11 @@ handleArgs (source:rest) = do
 
 chooseFileCreator :: Options -> Maybe FileCreator
 chooseFileCreator o =
-  case ap [optLink, optRelative, optSymbolic, on.optConvert] [o] of
+  case ap [optLink, optRelative, optSymbolic, on'.optConvert] [o] of
     (True:_)        -> Just ("=>", createLink)
     (_:True:True:_) -> Just ("<-", createRelativeLink)
     (_:_:True:_)    -> Just ("<-", createSymbolicLink)
-    (_:_:_:True:_)  -> fmap (((,) "~>") . convertFile) $ optConvert o
+    (_:_:_:True:_)  -> (,) "~>" . convertFile <$> optConvert o
     _               -> Nothing
 
 createOptions :: Options -> CreateOptions
@@ -83,15 +77,14 @@ convertFile converter source dest = do
   inHandle <- openBinaryFile source ReadMode
   let inRegex  = mkRegex "\\{in\\}"
       outRegex = mkRegex "\\{out\\}"
-  let command  = flip substitute converter
-        [(inRegex, source), (outRegex, tempPath)]
+  let command  = substitute [(inRegex, source), (outRegex, tempPath)] converter
   let process = (if not $ match inRegex converter then
         (\c -> c {std_in = UseHandle inHandle}) else id)
         <<< (if not $ match outRegex converter then
         (\c -> c {std_out = UseHandle tempHandle}) else id)
         <<< shell $ command
   (_,_,_, procHandle) <- createProcess process
-  waitForProcess procHandle
+  _ <- waitForProcess procHandle
   hClose inHandle >> hClose tempHandle
   moveFile tempPath dest
 
