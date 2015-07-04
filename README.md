@@ -12,6 +12,10 @@ Create renamed links, removing disallowed characters so files can be shared over
 
     transform-tree -s -r 'tr "?:\42" "¬;\47"' /path/to/files /path/to/share
 
-Convert only FLAC files in a file heirarchy to OGG format, preserving folder structure:
+Convert only FLAC files in a file hierarchy to OGG format, preserving folder structure:
 
-     transform-tree -F '\.flac$' -r 'sed s/\.flac$/.ogg/' --prune -c 'avconv -y -i - -f ogg -acodec libvorbis -aq 6 {out}' /path/to/music /path/to/dest
+     transform-tree \
+        -F '\.flac$' -r 'sed s/\.flac$/.ogg/' \
+        -c 'avconv -y -i - -f ogg -acodec libvorbis -aq 6 -vn {out}' \
+        --prune \
+        /path/to/music /path/to/dest
