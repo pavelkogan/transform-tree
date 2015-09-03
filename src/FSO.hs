@@ -6,7 +6,10 @@ module FSO
   , isDir, isFile
   ) where
 
-import BasePrelude
+import Control.Arrow
+import Control.Monad
+import Data.Ord
+import Prelude
 import System.Directory (createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath  ((</>))
 import System.Process   (readProcess)

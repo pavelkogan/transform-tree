@@ -7,12 +7,12 @@ module DirTree
 import FSO (CreateOptions, FSO (..), FileCreator, createFSO, isDir, name,
             replaceFileCreator)
 
-import BasePrelude
+import BasicPrelude
 import Data.Tree        (Tree (..), drawTree, rootLabel, subForest, unfoldTree,
                          unfoldTreeM)
 import System.Directory (copyFile, doesDirectoryExist, doesFileExist,
                          getDirectoryContents)
-import System.FilePath  (takeDirectory, takeFileName, (</>))
+import System.FilePath  (takeDirectory, takeFileName)
 
 data DirTree = DirTree
   { dirRoot      :: FilePath

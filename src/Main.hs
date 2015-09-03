@@ -7,14 +7,15 @@ import FSO     (pipeRenameFSO)
 import Options (Options (..), parseOpt, parseOpts)
 import Utils   (chooseFileCreator, createOptions, filterFiles, handleArgs)
 
-import BasePrelude
+import BasicPrelude
 import Options.Applicative (handleParseResult)
 import System.Directory    (getCurrentDirectory)
 import System.FilePath     (hasTrailingPathSeparator)
 
 main :: IO ()
 main = do
-  args <- getArgs
+  args' <- getArgs
+  let args = textToString <$> args'
   _ <- handleParseResult $ parseOpts args
   let (opts, pos, errs) = parseOpt args
   unless (null errs) $ error (head errs)

@@ -26,7 +26,7 @@ executable transform-tree
   hs-source-dirs:      src
   ghc-options:         -Wall
   build-depends:       base >=4.6 && <4.9
-                     , base-prelude
+                     , basic-prelude
                      , containers
                      , directory
                      , filepath

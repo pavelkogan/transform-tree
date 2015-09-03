@@ -6,13 +6,15 @@ import DirTree (DirTree (..), filterDirTreeByFSO)
 import FSO     (CreateOptions, FSO (..), FileCreator)
 import Options (Options (..), on')
 
-import BasePrelude
+import BasicPrelude
+import Control.Arrow
+import Data.Maybe
+import GHC.IO.Exception
+import GHC.IO.Handle
 import System.Directory   (canonicalizePath, copyFile, doesDirectoryExist,
                            getTemporaryDirectory, removeFile, renameFile)
-import System.FilePath    (isValid, joinPath, splitDirectories, splitFileName,
-                           (</>))
-import System.IO          (IOMode (..), openBinaryFile,
-                           openBinaryTempFile)
+import System.FilePath    (isValid, joinPath, splitDirectories, splitFileName)
+import System.IO          (IOMode (..), openBinaryFile, openBinaryTempFile)
 import System.Posix.Files (createLink, createSymbolicLink)
 import System.Process     (CreateProcess (..), StdStream (..), createProcess,
                            shell, waitForProcess)

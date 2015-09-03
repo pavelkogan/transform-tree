@@ -1,6 +1,7 @@
 module Options (Options(..), parseOpt, on', parseOpts) where
 
-import BasePrelude
+import BasicPrelude
+import Data.Maybe
 import Options.Applicative
 
 class Switch a where
