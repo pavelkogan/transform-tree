@@ -29,12 +29,26 @@ executable transform-tree
                      , basic-prelude
                      , containers
                      , directory
+                     , extra
+                     , file-location
+                     , filemanip
                      , filepath
                      , optparse-applicative
+                     , pointless-fun
                      , process
+                     , mtl
                      , regex-compat
+                     , system-filepath
                      , turtle
                      , unix
+                     , unix-compat
   default-language:    Haskell2010
   default-extensions:  NoImplicitPrelude
+                       FlexibleContexts
+                       LambdaCase
+                       MultiWayIf
+                       OverloadedStrings
+                       PatternSynonyms
+                       RecordWildCards
+                       TemplateHaskell
                        TupleSections

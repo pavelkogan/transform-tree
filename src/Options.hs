@@ -1,81 +1,86 @@
-module Options (Options(..), parseOpt, on', parseOpts) where
+module Options where
 
-import BasicPrelude
-import Data.Maybe
-import Options.Applicative
+import Imports
 
-class Switch a where
-  on', off :: a -> Bool
-  on' = not . off; off = not . on'
+import qualified Options.Applicative as Opt
 
-instance Switch Bool       where on' = id
-instance Switch (Maybe a)  where on' = isJust
+data FileSource = STDIN | SourcePath FilePath
+  deriving (Show, Eq)
+
+data FileDestination = PWD | DestinationPath FilePath
+  deriving (Show, Eq)
+
+toFileSource :: Maybe FilePath -> FileSource
+toFileSource Nothing = STDIN
+toFileSource (Just a) = SourcePath a
+
+toFileDestination :: Maybe FilePath -> FileDestination
+toFileDestination Nothing = PWD
+toFileDestination (Just a) = DestinationPath a
+
+newtype Command = Command Text
+  deriving (Show, Read, Eq, Ord)
+
+data Operation = HardLink
+               | SoftLink
+               | Converter Command
+               | Copy
+  deriving (Show, Read, Eq, Ord)
+
+data Verbosity = Quiet | Normal | Verbose
+  deriving (Show, Read, Eq, Ord)
 
 data Options = Options
-  { optVerbose  :: Bool
-  , optQuiet    :: Bool
-  , optRename   :: Maybe String
-  , optLink     :: Bool
-  , optSymbolic :: Bool
-  , optRelative :: Bool
-  , optConvert  :: Maybe String
-  , optFilter   :: Maybe String
-  , optPrune    :: Bool
-  , optForce    :: Bool
-  , optDryRun   :: Bool
-  , optSource   :: String
-  , optDest     :: Maybe String
-  } deriving (Show)
+  { dryRun    :: Bool
+  , verbosity :: Verbosity
+  , force     :: Bool
+  , prune     :: Bool
+  , renamer   :: Maybe Command
+  , operation :: Operation
+  , relative  :: Bool
+  , source    :: FileSource
+  , dest      :: FileDestination
+  } deriving (Show, Eq)
 
-options :: Parser Options
-options = Options
-  <$> switch (long "verbose" <> short 'v' <> help "verbose output")
-  <*> switch (long "quiet" <> short 'q' <> help "quiet output")
-  <*> optional (strOption $ help "pipe to change filenames"
-      <> long "rename" <> short 'r' <> metavar "RENAMER")
-  <*> switch (long "link" <> short 'l' <> help "create hard links")
-  <*> switch (long "symlink" <> short 's'
-      <> help "create symbolic links")
-  <*> switch (long "relative" <> help "make symlinks relative")
-  <*> optional (strOption $ help "command for converting files; \
-         \optionally specify '{in}' and '{out}'"
-      <> long "convert" <> short 'c' <> metavar "CONVERTER")
-  <*> optional (strOption $ help
-         "regular expression used to filter files"
-      <> long "filter" <> short 'F' <> metavar "FILTER")
-  <*> switch (long "prune" <> short 'p'
-      <> help "remove empty directories")
-  <*> switch (long "force" <> short 'f'
-      <> help "overwrite existing files")
-  <*> switch (long "dry-run" <> short 'n'
-      <> help "perform a trial run with no changes made")
-  <*> argument str (metavar "SOURCE")
-  <*> optional (argument str (metavar "DEST"))
+sourceContentsOnly :: Options -> Bool
+sourceContentsOnly Options{ source = SourcePath a } = filename a == ""
+sourceContentsOnly _ = $(err "not defined when source is not a filepath")
 
-mutuallyExclusive :: [[Options -> Bool]]
-mutuallyExclusive = [ [optLink, optSymbolic, on'.optConvert]
-                    , [optVerbose, optQuiet] ]
+sourcePrefix :: Options -> FilePath
+sourcePrefix Options{ source = STDIN } = ""
+sourcePrefix Options{ source = SourcePath a }
+  | filename a == "" = a
+  | directory a == "./" = ""
+  | otherwise = directory a
 
-parseOpts :: [String] -> ParserResult Options
-parseOpts argv = parseResult
+parser :: Parser Options
+parser = Options
+  <$> switch "dry-run" 'n' "perform a trial run with no changes made"
+  <*> vParser
+  <*> switch "force" 'f' "overwrite existing files"
+  <*> switch "prune" 'p' "remove empty directories"
+  <*> optional (Command <$> optText "renamer" 'r' "pipe to change filenames")
+  <*> opParser
+  <*> switch_ "relative" "make symlinks relative"
+  <*> (toFileSource . maybeStdin <$> argPath "source" "source path or - for STDIN")
+  <*> (toFileDestination <$> optional (argPath "dest" "destination path; default is current directory"))
   where
-    parseResult = execParserPure (prefs mempty) parserInfo argv
-    parserInfo = info (helper <*> options) $ fullDesc <> header
-      "Usage: transform-tree [OPTION]... SOURCE [DEST]\n"
+    maybeStdin a = guard (a /= "-") >> Just a
+    switch_ l h = Opt.switch $ Opt.long l <> Opt.help h
 
--- |Parses list of command-line options into an Options data
--- structure, a list of non-options and a list of errors.
-parseOpt :: [String] -> (Options, [String], [String])
-parseOpt argv = (o', n, e')
-  where
-    o' = fromJust $ getParseResult $ parseOpts argv
-    e = []
-    n = optSource o' : maybeToList (optDest o')
-    e' = if not (collision o') then e
-           else "mutually exclusive options\n":e
+opParser :: Parser Operation
+opParser =
+      Converter . Command <$> optText "converter" 'c'
+      "command for converting files; optionally specify {in} and {out}"
+  <|> flag'' HardLink "link" 'l' "create hard links"
+  <|> flag'' SoftLink "symlink" 's' "create symbolic links"
+  <|> pure Copy
 
--- |Tests if more than one option has been used from any of the
--- lists of mutually exclusive options.
-collision :: Options -> Bool
-collision o = any g mutuallyExclusive
-  where g = (>1) . length . filter id . map ($ o)
+vParser :: Parser Verbosity
+vParser =
+      flag'' Quiet "quiet" 'q' "quiet output"
+  <|> flag'' Verbose "verbose" 'v' "verbose output"
+  <|> pure Normal
+
+flag'' :: a -> String -> Char -> String -> Parser a
+flag'' a l s' h = Opt.flag' a (Opt.long l <> Opt.short s' <> Opt.help h)
